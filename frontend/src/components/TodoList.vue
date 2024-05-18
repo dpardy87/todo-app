@@ -36,15 +36,16 @@ export default {
         this.todos.push(response.data);
         this.newTodo = '';
       } catch (error) {
-        console.error("There was an error wheb adding a todo", error);
+        console.error("There was an error when adding a todo", error);
       }
     },
     async deleteTodo(id) {
       try {
         await axios.delete(`/api/todos/${id}`);
         this.todos = this.todos.filter(todo => todo.id !== id);
+        console.log(`Successfully deleted todo with ID ${id}`)
       } catch (error) {
-        console.error("There was an error!", error);
+        console.error(`There was an error deleting the todo ${id}`, error);
       }
     }
   },

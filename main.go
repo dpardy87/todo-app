@@ -15,6 +15,7 @@ func main() {
 	// define routes
 	router.HandleFunc("/api/todos", api.GetTodos).Methods("GET")
 	router.HandleFunc("/api/todos", api.CreateTodo).Methods("POST")
+	router.HandleFunc("/api/todos/{id}", api.DeleteTodo).Methods("DELETE")
 
 	// setup CORS to allow connections from Vue dev server
     c := cors.New(cors.Options{

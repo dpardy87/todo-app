@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 )
 
 var todos = []Todo{}
@@ -21,6 +22,25 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(todo)
 }
 
-// func DeleteTodo(w http.ResponseWriter, r *http.Request){
-// }
+func DeleteTodo(w http.ResponseWriter, r *http.Request){
+	vars := mux.Vars(r)	// fetch route vars
+	id := vars["id"] 	// get value of 'id' from the URL
+	for index, todo := range todos {
+		if todo.ID == id {
+			/*
+				- todos[:index] creates new slice including elements up to but not including, the element at index
+				- todos[index+1:] creates a slice that starts just after the element at index (goes to end of slice)
+				- ... combines the two slices and returns the value, assigned to todos
+			*/
+			todos = append(todos[:index], todos[index+1:]...)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+	}
+
+	// if not found
+	w.WriteHeader(http.StatusNotFound)
+	// map[KeyType]ValueType
+	json.NewEncoder(w).Encode(map[string]string{"error": "Todo not found"})
+}
 
