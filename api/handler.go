@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var todos = []Todo{}
+var todos = []Todo{} // slice literal
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -15,10 +15,20 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
+	// creating a todo
 	var todo Todo
+	
+	// create a new decoder, read from request body,
+	// decodes the JSON data into todo (passed by reference)
+	
 	json.NewDecoder(r.Body).Decode(&todo)
 	todo.ID = uuid.NewString()
+
+	// adds todo to todos slice
 	todos = append(todos, todo)
+
+	// creates a new encoder: writes to the response writer (w)
+	// encodes the todo struct as JSON, writes it to HTTP response
 	json.NewEncoder(w).Encode(todo)
 }
 
