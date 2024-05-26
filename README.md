@@ -1,11 +1,21 @@
-# todo-app Backend
+# todo-app
 
 This README provides instructions for setting up and managing the backend part of your application.
 
-## Project Setup
+Please also check the README in the `frontend/` folder and the `scripts` section of `package.json`.
 
-Compile and run in one step:
+## Backend Setup
+
+Compile and run backend:
 
 ```bash
 go run .
+```
+
+## Alternative Setup
+
+Option to start backend and frontend concurrently:
+
+```bash
+sh start_app.sh
 ```
