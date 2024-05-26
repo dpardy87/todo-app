@@ -1,5 +1,7 @@
 # todo-app
 
+![Cute Gopher](cute_gopher.png "Diligent Gopher")
+
 This README provides instructions for setting up and managing the backend part of your application.
 
 Please also check the README in the `frontend/` folder and the `scripts` section of `package.json`.
