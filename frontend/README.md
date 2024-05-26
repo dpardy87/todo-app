@@ -1,4 +1,4 @@
-# Frontend
+# todo-app Frontend
 
 This README provides instructions for setting up and managing the frontend part of your application.
 

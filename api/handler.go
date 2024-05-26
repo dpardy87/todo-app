@@ -20,7 +20,6 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	
 	// create a new decoder, read from request body,
 	// decodes the JSON data into todo (passed by reference)
-	
 	json.NewDecoder(r.Body).Decode(&todo)
 	todo.ID = uuid.NewString()
 
@@ -34,7 +33,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 func DeleteTodo(w http.ResponseWriter, r *http.Request){
 	vars := mux.Vars(r)	// fetch route vars
-	id := vars["id"] 	// get value of 'id' from the URL
+	id := vars["id"] 	// get value of 'id' from URL
 	for index, todo := range todos {
 		if todo.ID == id {
 			/*
@@ -54,3 +53,26 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(map[string]string{"error": "Todo not found"})
 }
 
+func UpdateTodo(w http.ResponseWriter, r *http.Request){
+	// updating a todo
+	vars := mux.Vars(r) // fetch route variables
+	id := vars["id"]	// get value of 'id' from URL
+	var updatedTodo Todo
+
+	// create new decoder, read from reqeust body, and pass that data to updatedTodo (by ref)
+	json.NewDecoder(r.Body).Decode(&updatedTodo)
+
+	for index, todo := range todos {
+		if todo.ID == id {
+			todos[index].TaskName = updatedTodo.TaskName
+			todos[index].Description = updatedTodo.Description
+			todos[index].Completed = updatedTodo.Completed
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+
+			// serialize the todos[index] item, returns a new Encoder that writes to w
+			json.NewEncoder(w).Encode(todos[index])
+		}
+	}
+}
