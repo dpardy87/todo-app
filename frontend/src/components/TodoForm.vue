@@ -3,7 +3,7 @@
     <form @submit.prevent="addTodo">
       <div class="mb-4"><!-- margin-bottom, 1rem or 16px -->
         <label for="taskName" class="block text-gray-700 font-bold mb-1">Task Name:</label>
-        <input type="text" id="taskName" v-model="taskName" class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500"><!-- w-full = width 100% of its parent, p-2 = 8px -->
+        <input type="text" id="taskName" v-model="taskName" ref="taskInput" class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500"><!-- w-full = width 100% of its parent, p-2 = 8px -->
       </div>
       <div class="mb-4">
         <label for="description" class="block text-gray-700 font-bold mb-1">Description:</label>
@@ -31,6 +31,9 @@ export default {
       description: '',
       completed: false
     };
+  },
+  mounted() {
+    this.$refs.taskInput.focus();
   },
   methods: {
     addTodo() {

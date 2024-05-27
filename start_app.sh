@@ -1,19 +1,39 @@
 #!/bin/bash
-# Description: This script facilitates the development process by ensuring that 
-# 'npm run dev' is executed from the correct directory. If the script is run from the root directory 
-# of the todo-app, it automatically switches to the frontend directory before executing the command.
-# This setup starts both the Go server and the Vue frontend concurrently.
 
-# Get the current working directory name
+# check if ES container is already running
+if [ $(docker ps -q -f name=elasticsearch | wc -l) -eq 1 ]; then
+  echo "Elasticsearch container is already running."
+else
+  # start it
+  docker run -d --name elasticsearch -p 127.0.0.1:9200:9200 -p 127.0.0.1:9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.13.4
+  echo "Elasticsearch container started."
+fi
+
+# check if 'todos' index exists
+if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9200/todos" | grep -q 200; then
+    echo "Index 'todos' already exists."
+else
+    # create 'todos' index
+    curl -X PUT "localhost:9200/todos" -H 'Content-Type: application/json' -d'
+    {
+      "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 1
+      }
+    }
+    '
+    echo "\nIndex 'todos' created successfully."
+fi
+
+# get current dir
 current_dir=$(basename "$PWD")
 
-# Check if the current directory is the root directory of the todo-app.
-# If so, switch to the frontend/ directory.
+# check if the current directory is the root directory
+# if so, switch to frontend/
 if [ "$current_dir" = "todo-app" ]; then
     echo "Running from root, switching to frontend..."
     cd frontend
 fi
 
-# Run the development script listed in frontend/package.json
-# This script starts the Go server and Vue frontend concurrently.
+# this package.json script starts the Go server and Vue frontend concurrently.
 npm run dev
