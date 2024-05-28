@@ -8,11 +8,29 @@ Please also check the README in the `frontend/` folder and the `scripts` section
 
 ## Backend Setup
 
-Compile and run backend:
+### Dependencies
+
+Ensure all Go dependencies are installed:
+
+```bash
+go mod tidy
+```
+
+### Compile and run backend:
 
 ```bash
 go run .
 ```
+
+To build a binary if needed:
+
+```bash
+go build -o todo-app
+```
+
+### Project Structure
+
+`api/`: Handlers and routing
 
 ## Alternative Setup
 
