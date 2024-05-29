@@ -2,9 +2,10 @@ package api
 
 import (
 	"encoding/json"
-	"net/http"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"net/http"
+	"todo-app/elastic"
 )
 
 var todos = []Todo{} // slice literal
@@ -16,24 +17,36 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	// creating a todo
+
+	// es config
+	esHosts := []string{"http://localhost:9200"}
+	esClient := elastic.NewClient(esHosts)
+	if esClient == nil {
+		http.Error(w, "Failed to create Elasticsearch client", http.StatusInternalServerError)
+		return
+	}
+
+	// data to insert
 	var todo Todo
-	
-	// create a new decoder, read from request body,
-	// decodes the JSON data into todo (passed by reference)
 	json.NewDecoder(r.Body).Decode(&todo)
-	todo.ID = uuid.NewString()
+	todo.ID = uuid.New().String()
 
-	// adds todo to todos slice
-	todos = append(todos, todo)
+	id, err := esClient.Insert(r.Context(), "todos", todo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	// creates a new encoder: writes to the response writer (w)
-	// encodes the todo struct as JSON, writes it to HTTP response
+	// send todo to client
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated) // 201
 	json.NewEncoder(w).Encode(todo)
+	fmt.Println(`{"success": true, "id": "` + id + `"}`)
 }
 
-func DeleteTodo(w http.ResponseWriter, r *http.Request){
-	vars := mux.Vars(r)	// fetch route vars
-	id := vars["id"] 	// get value of 'id' from URL
+func DeleteTodo(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r) // fetch route vars
+	id := vars["id"]    // get value of 'id' from URL
 	for index, todo := range todos {
 		if todo.ID == id {
 			/*
@@ -53,10 +66,10 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(map[string]string{"error": "Todo not found"})
 }
 
-func UpdateTodo(w http.ResponseWriter, r *http.Request){
+func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	// updating a todo
 	vars := mux.Vars(r) // fetch route variables
-	id := vars["id"]	// get value of 'id' from URL
+	id := vars["id"]    // get value of 'id' from URL
 	var updatedTodo Todo
 
 	// create new decoder, read from reqeust body, and pass that data to updatedTodo (by ref)
