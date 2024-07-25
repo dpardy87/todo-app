@@ -9,20 +9,34 @@ else
   echo "Elasticsearch container started."
 fi
 
+# wait for Elasticsearch to be up and running
+echo "Waiting for Elasticsearch to start..."
+until curl -s -o /dev/null -w "%{http_code}" "http://localhost:9200" | grep -q 200; do
+  printf '.'
+  sleep 1
+done
+echo "Elasticsearch is up and running."
+
 # check if 'todos' index exists
 if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9200/todos" | grep -q 200; then
     echo "Index 'todos' already exists."
 else
-    # create 'todos' index
-    curl -X PUT "localhost:9200/todos" -H 'Content-Type: application/json' -d'
+   # Create 'todos' index
+    response=$(curl -s -X PUT "localhost:9200/todos" -H 'Content-Type: application/json' -d'
     {
       "settings": {
         "number_of_shards": 1,
         "number_of_replicas": 1
       }
     }
-    '
-    echo "\nIndex 'todos' created successfully."
+    ')
+
+    if [ -z "$response" ]; then
+        echo "Failed to create 'todos' index. No response from server."
+        exit 1
+    else
+        echo "\nIndex 'todos' created successfully."
+    fi
 fi
 
 # get current dir
@@ -31,7 +45,7 @@ current_dir=$(basename "$PWD")
 # check if the current directory is the root directory
 # if so, switch to frontend/
 if [ "$current_dir" = "todo-app" ]; then
-    echo "Running from root, switching to frontend..."
+    echo "Running from root, switching to frontend/ directory..."
     cd frontend
 fi
 
