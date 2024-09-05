@@ -1,129 +1,130 @@
 package elastic
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v7"
-	"strings"
+	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"todo-app/models"
 )
 
+// ESClient wraps the Elasticsearch client
 type ESClient struct {
-	// struct for Golang Elastic client
 	Client *elasticsearch.Client
 }
 
-func NewClient(addresses []string) *ESClient {
-	// create new ES client
+func NewClient(addresses []string) (*ESClient, error) {
+	// creates ES client with provided addresses
 	cfg := elasticsearch.Config{
 		Addresses: addresses,
 	}
 
-	// instantiate client with config -> url(s)
 	client, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		fmt.Errorf("error creating Elastic client: %s", err.Error())
+		return nil, err
 	}
 
-	return &ESClient{Client: client}
+	return &ESClient{Client: client}, nil
 }
 
-func (c *ESClient) Insert(ctx context.Context, index string, document interface{}) (string, error) {
-	// insert new doc into specified index
+func (es *ESClient) GetAll(ctx context.Context, index string) ([]models.Todo, error) {
+	// create request
+	var buf bytes.Buffer
+	query := `{
+		"query": {
+			"match_all": {}
+		}
+	}`
+	buf.WriteString(query)
 
-	// serialize the Todo struct into JSON
-	data, err := json.Marshal(document)
+	req := esapi.SearchRequest{
+		Index: []string{index},
+		Body: &buf,
+	}
+
+	// Do() executes request and returns response (or error)
+	res, err := req.Do(ctx, es.Client)
+	if err != nil {
+		fmt.Printf("Error when executing request: %v", err)
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.IsError(){
+		fmt.Printf("Elasticsearch error response: %v\n", res)
+		return nil, errors.New(fmt.Sprintf("Error fetching Elastic documents: %s", res.String()))
+	}
+
+	// parse response into map
+	var resMap map[string]interface{}
+
+	if err := json.NewDecoder(res.Body).Decode(&resMap); err != nil {
+		fmt.Printf("Error decoding resMap: %v", err)
+		return nil, err
+	}
+
+	// get hits from response
+	hits := resMap["hits"].(map[string]interface{})["hits"].([]interface{})
+	var todos []models.Todo
+
+	// iterate through kv hits
+	for _, hit := range hits {
+		// Each hit is a document
+		doc := hit.(map[string]interface{})["_source"]
+
+		// convert to Todo struct
+		todoBytes, _ := json.Marshal(doc)
+
+		var todo models.Todo
+		if err := json.Unmarshal(todoBytes, &todo); err != nil {
+			return nil, err
+		}
+		todos = append(todos, todo)
+	}
+
+	return todos, nil
+}
+
+func (es *ESClient) Insert(ctx context.Context, index string, doc interface{}) (string, error) {
+	// convert doc to JSON first
+	body, err := json.Marshal(doc)
 	if err != nil {
 		return "", err
 	}
 
-	// insert it
-	res, err := c.Client.Index(
-		index,                           // Index name
-		strings.NewReader(string(data)), // Document to be indexed
-		c.Client.Index.WithContext(ctx),
-	)
+	// create the request
+	req := esapi.IndexRequest{
+		Index: index,
+		DocumentID: "",
+		Body: bytes.NewReader(body),
+		Refresh: "true",
+	}
+
+	res, err := req.Do(ctx, es.Client)
 	if err != nil {
-		return "", err // return immediately if error occurs
-	}
-	defer res.Body.Close() // postpone Close() if there is no error. Carry on.
-
-	if res.IsError() {
-		var id string
-
-		// check if document implements an interface with a method named ID
-		if docIdProvider, ok := document.(interface{ ID() string }); ok {
-			id = docIdProvider.ID()
-		}
-		return "", fmt.Errorf("error indexing document ID=%s: %s", id, res.String())
+		return "", err
 	}
 
-	// parse ES response to extract Elastic assigned _id
-	var esResponse map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&esResponse); err != nil {
-		return "", fmt.Errorf("error parsing response: %s", err)
-	}
+	defer res.Body.Close()
 
-	// convert _id to string. ok var will return true if conversion is successful
-	if _id, ok := esResponse["_id"].(string); ok {
-		return _id, nil
-	} else {
-		// Handle the case where _id is not a string or conversion is not feasible
-		return "", fmt.Errorf("Elasticsearch _id not found or is not a string")
+	// check for errors in response
+	if res.IsError(){
+		return "", errors.New(fmt.Sprintf("Error indexing document: %s", res.String()))
 	}
-}
-
-func (c *ESClient) Search(ctx context.Context) ([]interface{}, error) {
-	// search Elastic, return results
-
-	// will match all documents as is
-	searchQuery := map[string]interface{}{
-		"size": 500,
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must": {},
-			},
-		},
-	}
-
-	// convert searchQuery into JSON
-	queryJSON, err := json.Marshal(searchQuery)
-	if err != nil {
-		return nil, fmt.Errorf("could not encode search query: %s", err)
-	}
-
-	// set up request, convert JSON into a Reader obj (non-writable)
-	req := c.SearchRequest{
-		Index: []string{"_all"},
-		Body:  strings.NewReader(string(queryJSON)),
-	}
-
-	// execute request
-	response, err := req.Do(ctx, c.Client)
-	if err != nil {
-		return nil, fmt.Errorf("elastic search failed: %s", err)
-	}
-	defer res.Body.Close() // postpone Close() if there is no error. Carry on.
 
 	// decode response
-	var results map[string]interface{}
-	// pass pointer to results, so Decode can modify it directly
-	if err := json.NewDecoder(response.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("error parsing elastic response: %s", err)
+	var resMap map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&resMap); err != nil {
+		return "", err
 	}
 
-	// verify map kv structure
-	hitsMap, ok := results["hits"].(map[string]interface{})
-	if !ok {
-		return []interface{}{}, fmt.Println("Error with structure returned: %s", ok)
+	// extract and return doc ID
+	if id, ok := resMap["_id"].(string); ok {
+		return id, nil
 	}
 
-	// if no hits, return empty slice
-	hitsSlice, ok := hitsMap["hits"].([]interface{})
-	if !ok || len(hitsSlice) == 0 {
-		return []interface{}, fmt.Println("Successful response but no results.")
-	}
-
-	return hitsSlice, nil
-
+	return "", errors.New("Failed to retrieve document ID from response")
 }

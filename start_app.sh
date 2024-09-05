@@ -5,12 +5,16 @@ if [ $(docker ps -q -f name=elasticsearch | wc -l) -eq 1 ]; then
   echo "Elasticsearch container is already running."
 else
   # start it
-  docker run -d --name elasticsearch -p 127.0.0.1:9200:9200 -p 127.0.0.1:9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.13.4
+  docker run -d --name elasticsearch -p 127.0.0.1:9200:9200 -p 127.0.0.1:9300:9300 \
+  -e "discovery.type=single-node" \
+  -e "xpack.security.enabled=false" \
+  -e "xpack.security.http.ssl.enabled=false" \
+  docker.elastic.co/elasticsearch/elasticsearch:8.13.1
   echo "Elasticsearch container started."
 fi
 
 # wait for Elasticsearch to be up and running
-echo "Waiting for Elasticsearch to start..."
+echo "Waiting for Elasticsearch to start"
 until curl -s -o /dev/null -w "%{http_code}" "http://localhost:9200" | grep -q 200; do
   printf '.'
   sleep 1

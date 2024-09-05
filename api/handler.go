@@ -2,17 +2,39 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"net/http"
 	"todo-app/elastic"
+	"todo-app/models"
 )
 
-var todos = []Todo{} // slice literal
+var todos = []models.Todo{} // slice literal
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
+	// Set the content type of the response to JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(todos)
+	// Create an Elasticsearch client
+	esHosts := []string{"http://localhost:9200"}
+	esClient, err := elastic.NewClient(esHosts)
+	if err != nil {
+		http.Error(w, "Failed to create Elasticsearch client", http.StatusInternalServerError)
+		return
+	}
+
+	// Perform a search query to get all todos from the "todos" index
+	searchResult, err := esClient.GetAll(r.Context(), "todos")
+	if err != nil {
+		http.Error(w, "Failed to retrieve todos", http.StatusInternalServerError)
+		return
+	}
+
+	// encode search result into response
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(searchResult); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
@@ -20,14 +42,14 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	// es config
 	esHosts := []string{"http://localhost:9200"}
-	esClient := elastic.NewClient(esHosts)
-	if esClient == nil {
+	esClient, err := elastic.NewClient(esHosts)
+	if err != nil {
 		http.Error(w, "Failed to create Elasticsearch client", http.StatusInternalServerError)
 		return
 	}
 
 	// data to insert
-	var todo Todo
+	var todo models.Todo
 	json.NewDecoder(r.Body).Decode(&todo)
 	todo.ID = uuid.New().String()
 
@@ -40,7 +62,11 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	// send todo to client
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated) // 201
-	json.NewEncoder(w).Encode(todo)
+	if err := json.NewEncoder(w).Encode(todo); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+
 	fmt.Println(`{"success": true, "id": "` + id + `"}`)
 }
 
@@ -70,7 +96,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	// updating a todo
 	vars := mux.Vars(r) // fetch route variables
 	id := vars["id"]    // get value of 'id' from URL
-	var updatedTodo Todo
+	var updatedTodo models.Todo
 
 	// create new decoder, read from reqeust body, and pass that data to updatedTodo (by ref)
 	json.NewDecoder(r.Body).Decode(&updatedTodo)
