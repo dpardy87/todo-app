@@ -1,5 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
-
+import eslintPlugin from 'vite-plugin-eslint'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -7,6 +7,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [
     vue(),
+    eslintPlugin(),
   ],
   resolve: {
     alias: {
@@ -17,9 +18,5 @@ export default defineConfig({
     outDir: '../web', //npm run build will create a web/ folder in root
     emptyOutDir: true
   },
-  server: {
-    proxy: {
-      '/api': 'http://localhost:8080'
-    }
-  }
+  server: {}
 })

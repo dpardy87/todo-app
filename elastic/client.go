@@ -11,11 +11,12 @@ import (
 	"todo-app/models"
 )
 
-// ESClient wraps the Elasticsearch client
+// ESClient struct wraps the Elasticsearch client
 type ESClient struct {
 	Client *elasticsearch.Client
 }
 
+// create new Elasrtic client
 func NewClient(addresses []string) (*ESClient, error) {
 	// creates ES client with provided addresses
 	cfg := elasticsearch.Config{
@@ -30,6 +31,7 @@ func NewClient(addresses []string) (*ESClient, error) {
 	return &ESClient{Client: client}, nil
 }
 
+// get all documents based on Elastic index
 func (es *ESClient) GetAll(ctx context.Context, index string) ([]models.Todo, error) {
 	// create request
 	var buf bytes.Buffer
@@ -68,7 +70,12 @@ func (es *ESClient) GetAll(ctx context.Context, index string) ([]models.Todo, er
 
 	// get hits from response
 	hits := resMap["hits"].(map[string]interface{})["hits"].([]interface{})
+
 	var todos []models.Todo
+	if len(hits) == 0 {
+		// return empty array
+        return todos, nil
+    }
 
 	// iterate through kv hits
 	for _, hit := range hits {
@@ -88,6 +95,7 @@ func (es *ESClient) GetAll(ctx context.Context, index string) ([]models.Todo, er
 	return todos, nil
 }
 
+// inserts a document into Elastic
 func (es *ESClient) Insert(ctx context.Context, index string, doc interface{}) (string, error) {
 	// convert doc to JSON first
 	body, err := json.Marshal(doc)

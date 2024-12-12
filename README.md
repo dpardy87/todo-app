@@ -39,3 +39,5 @@ Option to start backend and frontend concurrently:
 ```bash
 sh start_app.sh
 ```
+
+Fire up the frontend by visiting [http://localhost:5173/](http://localhost:5173/)

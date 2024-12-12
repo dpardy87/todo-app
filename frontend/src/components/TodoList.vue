@@ -5,16 +5,16 @@
     </div>
     <div class="w-1/2 p-4">
       <ul>
-        <li v-for="todo in todos" :key="todo.id" class="bg-white rounded-lg shadow p-3 mb-4">
+        <!-- Only show tasks that are not completed -->
+        <li v-for="todo in activeTodos" :key="todo.id" class="bg-white rounded-lg shadow p-3 mb-4">
           <div class="flex justify-between items-center">
             <div>
               <h3 class="text-lg font-semibold">{{ todo.task }}</h3>
               <p class="text-gray-600">{{ todo.description }}</p>
             </div>
             <div>
-              <input type="checkbox" v-model="todo.completed" class="mr-2">
+              <input v-model="todo.completed" type="checkbox" class="mr-2" @change="updateTodoStatus(todo)">
               <span class="text-sm">{{ todo.completed ? 'Completed' : 'Incomplete' }}</span>
-              <button @click="deleteTodo(todo.id)" class="ml-2 text-red-500 hover:text-red-700">Delete</button>
             </div>
           </div>
         </li>
@@ -23,24 +23,32 @@
   </div>
 </template>
 
-
 <script>
 import TodoForm from './TodoForm.vue';
 import axios from 'axios';
 
 export default {
+  components: {
+    TodoForm
+  },
   data() {
     return {
       todos: [],
     };
   },
-  components: {
-    TodoForm
+  computed: {
+    // Filter out completed todos
+    activeTodos() {
+      return this.todos.filter(todo => !todo.completed);
+    }
+  },
+  mounted() {
+    this.fetchTodos();
   },
   methods: {
     async fetchTodos() {
       try {
-        const response = await axios.get('/api/todos');
+        const response = await axios.get('http://localhost:8080/api/todos');
         this.todos = response.data;
       } catch (error) {
         console.error("There was an error!", error);
@@ -48,26 +56,23 @@ export default {
     },
     async addTodo(newTodo) {
       try {
-        console.log("newTodo:", newTodo)
-        const response = await axios.post('/api/todos', { task: newTodo.taskName, description: newTodo.description, completed: newTodo.completed });
-        console.log("adding a todo, response constant:", response)
+        const response = await axios.post('http://localhost:8080/api/todos', {
+          task: newTodo.taskName,
+          description: newTodo.description,
+          completed: false // New todos are always incomplete
+        });
         this.todos.push(response.data);
       } catch (error) {
         console.error("There was an error when adding a todo", error);
       }
     },
-    async deleteTodo(id) {
+    async updateTodoStatus(todo) {
       try {
-        await axios.delete(`/api/todos/${id}`);
-        this.todos = this.todos.filter(todo => todo.id !== id);
-        console.log(`Successfully deleted todo with ID ${id}`)
+        await axios.put(`/api/todos/${todo.id}`, { completed: todo.completed });
       } catch (error) {
-        console.error(`There was an error deleting the todo ${id}`, error);
+        console.error("There was an error updating the todo status", error);
       }
     }
-  },
-  mounted() {
-    this.fetchTodos();
   }
 };
 </script>

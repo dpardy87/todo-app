@@ -7,18 +7,26 @@
     "dev": "concurrently \"npm run serve\" \"cd ../ && go run .\"",
     "serve": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint . --fix"
   },
   "dependencies": {
-    "vue": "^3.4.21"
+    "eslint-define-config": "^2.1.0",
+    "vite-plugin-eslint": "^1.8.1",
+    "vue": "^3.4.21",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@babel/eslint-parser": "^7.25.9",
     "@vitejs/plugin-vue": "^5.0.4",
     "autoprefixer": "^10.4.19",
     "axios": "^1.6.8",
     "concurrently": "^8.2.2",
+    "eslint": "^9.16.0",
+    "eslint-plugin-vue": "^9.32.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
-    "vite": "^5.2.8"
+    "vite": "^5.2.8",
+    "vue-eslint-parser": "^9.4.3"
   }
 }
